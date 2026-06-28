@@ -1,0 +1,18 @@
+# ライセンス・秘密（コミット厳禁）
+conf/license-key
+conf/password.txt
+deploy.json
+
+# ビルド済み製品アーカイブ（イメージに焼く成果物。gitには入れない）
+*.tar.gz
+
+# 大容量フォント資産（OFLで再配布可だが git 不向き。イメージ同梱/取得で対応）
+conf/profiles/fonts/
+
+# ログ・一時
+*.log
+*.tmp
+
+# AIエージェント用ローカルガイド（git管理外）
+AGENTS.md
+CLAUDE.md

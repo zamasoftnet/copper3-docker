@@ -1,0 +1,30 @@
+services:
+  copper-pdf:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: copper-pdf
+    restart: unless-stopped
+    ports:
+      # HTTPポート (copperd.propertiesで設定: jp.cssj.cssjd.http.port)
+      - "8497:8497"
+      # JKポート (AJP: jp.cssj.cssjd.jk.port)
+      # - "8496:8496"
+      # Mainポート
+      - "8499:8499"
+      # Controlポート
+      # - "8498:8498"
+    volumes:
+      # ログディレクトリを永続化
+      - copper-logs:/opt/copper-pdf/logs
+    environment:
+      - JAVA_OPTS=-Xmx2048m
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8497/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  copper-logs:
