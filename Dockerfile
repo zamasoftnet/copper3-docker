@@ -6,10 +6,11 @@ RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 # 作業ディレクトリを設定
 WORKDIR /opt/copper-pdf
 
-# Copper PDFアーカイブをコピーして展開
-COPY copper-pdf-3.2.32.tar.gz /tmp/
-RUN tar -xzf /tmp/copper-pdf-3.2.32.tar.gz -C /opt/copper-pdf --strip-components=1 \
-    && rm /tmp/copper-pdf-3.2.32.tar.gz \
+# Copper PDFアーカイブをコピーして展開（バージョンは build-arg で指定）
+ARG COPPER_VERSION=3.2.32
+COPY copper-pdf-${COPPER_VERSION}.tar.gz /tmp/copper-pdf.tar.gz
+RUN tar -xzf /tmp/copper-pdf.tar.gz -C /opt/copper-pdf --strip-components=1 \
+    && rm /tmp/copper-pdf.tar.gz \
     && chmod +x /opt/copper-pdf/copperd
 
 # ユーザーの設定ディレクトリをコピー（アーカイブ内のconfを上書き）

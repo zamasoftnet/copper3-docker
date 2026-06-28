@@ -1,0 +1,96 @@
+name: Publish container image
+
+# Copper PDF の Docker イメージをビルドして GHCR に push する。
+#
+# 製品 tarball とフォントは git 管理外（巨大/成果物）のため、CI では
+# GitHub Release のアセットからダウンロードしてビルドコンテキストに配置する。
+# license-key などの秘密はイメージに焼かず、実行時にマウントする。
+#
+# 必要な事前設定:
+#   - リポジトリ変数 ASSET_REPO : tarball/fonts を置いた Release のあるリポジトリ
+#       例) zamasoftnet/copper3-proprietary
+#   - リポジトリ Secret ASSET_TOKEN : 上記が private の場合に download するための PAT(repo スコープ)
+#   - 上記リポジトリに tag `v<version>` の Release を作り、次のアセットを添付:
+#       copper-pdf-<version>.tar.gz, fonts.tar.gz  (fonts.tar.gz は profiles/fonts 配下の中身)
+#   - 初回 publish 後、GHCR パッケージの可視性を Public に変更（ワンタイム手動）
+#       Org の Packages → copper-pdf → Package settings → Change visibility → Public
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Copper PDF version (image tag)'
+        required: true
+        default: '3.2.32'
+  push:
+    tags:
+      - 'v*'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: zamasoftnet/copper-pdf
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout recipe
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download product tarball and fonts from release
+        env:
+          GH_TOKEN: ${{ secrets.ASSET_TOKEN }}
+          VERSION: ${{ steps.ver.outputs.version }}
+          ASSET_REPO: ${{ vars.ASSET_REPO }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ASSET_REPO:-}" ]; then
+            echo "::error::repository variable ASSET_REPO is not set"; exit 1
+          fi
+          gh release download "v${VERSION}" --repo "$ASSET_REPO" \
+            --pattern "copper-pdf-${VERSION}.tar.gz" --output "copper-pdf-${VERSION}.tar.gz"
+          gh release download "v${VERSION}" --repo "$ASSET_REPO" \
+            --pattern "fonts.tar.gz" --output fonts.tar.gz
+          mkdir -p conf/profiles/fonts
+          tar -xzf fonts.tar.gz -C conf/profiles/fonts
+          rm -f fonts.tar.gz
+
+      - name: Safety check (no secrets in build context)
+        run: |
+          set -e
+          for f in conf/license-key conf/password.txt deploy.json; do
+            if [ -f "$f" ]; then echo "::error::$f must not be in the image"; exit 1; fi
+          done
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: |
+            COPPER_VERSION=${{ steps.ver.outputs.version }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.ver.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.ver.outputs.version }}

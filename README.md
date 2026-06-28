@@ -138,6 +138,34 @@ ports:
 
 カスタムフォントを使用する場合は、`conf/profiles/fonts/` ディレクトリにフォントファイルを配置し、`fonts.xml` を編集してください。
 
+## 公開イメージ (GHCR) の利用
+
+ビルド済みイメージは GitHub Container Registry で公開しています。tarball を用意しなくても利用できます。
+
+```bash
+docker pull ghcr.io/zamasoftnet/copper-pdf:3.2.32
+# 自分のライセンスキーを実行時にマウント（イメージには焼き込まれていません）
+docker run -d -p 8497:8497 -p 8499:8499 \
+  -v "$PWD/license-key:/opt/copper-pdf/conf/license-key:ro" \
+  ghcr.io/zamasoftnet/copper-pdf:3.2.32
+```
+
+> ライセンスキー (`conf/license-key`) はイメージに含まれません。各自で取得し、上記のように実行時にマウントしてください。
+
+## イメージの publish（メンテナ向け）
+
+`.github/workflows/publish-image.yml` が GHCR へ push します。製品 tarball とフォントは
+git 管理外のため、CI では Release アセットから取得します。事前設定:
+
+- リポジトリ変数 `ASSET_REPO`（例: `zamasoftnet/copper3-proprietary`）
+- リポジトリ Secret `ASSET_TOKEN`（private Release を download する PAT・repo スコープ）
+- `ASSET_REPO` に tag `v<version>` の Release を作成し、`copper-pdf-<version>.tar.gz` と
+  `fonts.tar.gz`（`conf/profiles/fonts/` 配下の中身）を添付
+- 初回 publish 後、GHCR パッケージの可視性を **Public** に変更（ワンタイム手動）
+
+その後、Actions の「Publish container image」を `workflow_dispatch` で実行するか、
+`v3.2.32` のようなタグを push するとビルド・公開されます。
+
 ## ドキュメント
 
 詳しいドキュメントは `docs/manual.pdf` を参照してください。

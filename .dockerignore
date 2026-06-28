@@ -1,0 +1,18 @@
+# ビルドコンテキストから除外（イメージに焼かない）
+.git
+.github
+.gitignore
+.dockerignore
+README.md
+*.md
+deploy
+deploy.sh
+
+# 秘密は絶対にイメージへ入れない（ローカルに存在しても除外）
+conf/license-key
+conf/password.txt
+deploy.json
+
+# ログ・一時
+*.log
+*.tmp
