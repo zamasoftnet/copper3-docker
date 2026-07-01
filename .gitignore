@@ -2,6 +2,7 @@
 conf/license-key
 conf/password.txt
 deploy.json
+docker-compose.override.yml
 
 # ビルド済み製品アーカイブ（イメージに焼く成果物。gitには入れない）
 *.tar.gz

@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.4
 FROM eclipse-temurin:11-jre
 
 # curlをインストール（ヘルスチェック用）
@@ -6,9 +7,9 @@ RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 # 作業ディレクトリを設定
 WORKDIR /opt/copper-pdf
 
-# Copper PDFアーカイブをコピーして展開（バージョンは build-arg で指定）
-ARG COPPER_VERSION=3.2.32
-COPY copper-pdf-${COPPER_VERSION}.tar.gz /tmp/copper-pdf.tar.gz
+# Copper PDFアーカイブを proprietary 側のビルド成果物からコピーして展開
+ARG COPPER_VERSION=3.2.33
+COPY --from=copper-dist copper-pdf-${COPPER_VERSION}.tar.gz /tmp/copper-pdf.tar.gz
 RUN tar -xzf /tmp/copper-pdf.tar.gz -C /opt/copper-pdf --strip-components=1 \
     && rm /tmp/copper-pdf.tar.gz \
     && chmod +x /opt/copper-pdf/copperd

@@ -3,6 +3,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      additional_contexts:
+        copper-dist: ../proprietary/CopperPDF/build
+      args:
+        COPPER_VERSION: ${COPPER_VERSION:-3.2.33}
     container_name: copper-pdf
     restart: unless-stopped
     ports:

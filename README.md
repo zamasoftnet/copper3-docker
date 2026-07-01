@@ -1,171 +1,150 @@
 # Copper PDF Docker
 
-Copper PDF 3.2.32 をDockerコンテナで実行するための設定です。
+Copper PDF を Docker イメージで利用するための簡易手順です。
 
-## 前提条件
+## イメージ
 
-- Docker と Docker Compose がインストールされていること
-- `conf` ディレクトリに有効なライセンスキー (`license-key`) が配置されていること
-
-## ファイル構成
-
-```
-copper-pdf/
-├── Dockerfile              # Dockerイメージビルド用
-├── docker-compose.yml      # Docker Compose設定
-├── copper-pdf-3.2.32.tar.gz # Copper PDFアーカイブ
-├── conf/                   # 設定ディレクトリ (ビルド時にイメージにコピーされる)
-│   ├── copperd.properties  # サーバー設定
-│   ├── license-key         # ライセンスキー
-│   ├── access.txt          # アクセス制御
-│   ├── password.txt        # パスワード設定
-│   ├── logging.properties  # ログ設定
-│   └── profiles/           # プロファイル設定
-│       ├── default.properties
-│       └── fonts/          # フォント設定
-└── README.md
+```text
+ghcr.io/zamasoftnet/copper-pdf:<tag>
 ```
 
-**注意**: `conf/` ディレクトリはビルド時にDockerイメージにコピーされます。
-設定を変更した場合は `docker compose up -d --build` で再ビルドしてください。
+通常は `latest`、または公開済みのタグを指定してください。
 
-## 使い方
+## 起動
 
-### 1. イメージのビルドと起動
+### Docker Compose
+
+`docker-compose.yml` を作成します。
+
+```yaml
+services:
+  copper-pdf:
+    image: ghcr.io/zamasoftnet/copper-pdf:latest
+    container_name: copper-pdf
+    restart: unless-stopped
+    ports:
+      - "8497:8497"
+      - "8499:8499"
+    volumes:
+      - copper-logs:/opt/copper-pdf/logs
+
+volumes:
+  copper-logs:
+```
+
+起動します。
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
-### 2. ログの確認
+ログ確認と停止:
 
 ```bash
 docker compose logs -f copper-pdf
-```
-
-### 3. 停止
-
-```bash
 docker compose down
 ```
 
-### 4. サーバーの状態確認
-
-コンテナ内からcopperdコマンドで状態を確認できます：
+### docker run
 
 ```bash
-docker compose exec copper-pdf /opt/copper-pdf/copperd -status
+docker run -d --name copper-pdf \
+  -p 8497:8497 \
+  -p 8499:8499 \
+  -v copper-logs:/opt/copper-pdf/logs \
+  ghcr.io/zamasoftnet/copper-pdf:latest
 ```
+
+PowerShell:
+
+```powershell
+docker run -d --name copper-pdf `
+  -p 8497:8497 `
+  -p 8499:8499 `
+  -v copper-logs:/opt/copper-pdf/logs `
+  ghcr.io/zamasoftnet/copper-pdf:latest
+```
+
+## ライセンスキー
+
+ライセンスキーが無くてもコンテナは起動します。その場合はインストール直後の機能限定版として動作します。
+
+商用ライセンスや試用ライセンスを使う場合は、ホスト側に `conf/license-key` を用意し、コンテナの `/opt/copper-pdf/conf/license-key` へ読み取り専用で mount してください。
+
+```text
+conf/
+└── license-key
+```
+
+Docker Compose では `volumes` に次を追加します。
+
+```yaml
+      - type: bind
+        source: ./conf/license-key
+        target: /opt/copper-pdf/conf/license-key
+        read_only: true
+        bind:
+          create_host_path: false
+```
+
+`docker run` では次のオプションを追加します。
+
+```bash
+--mount type=bind,source="$PWD/conf/license-key",target=/opt/copper-pdf/conf/license-key,readonly
+```
+
+PowerShell:
+
+```powershell
+--mount type=bind,source="${PWD}\conf\license-key",target=/opt/copper-pdf/conf/license-key,readonly
+```
+
+ライセンスの種類と制限については、[公式サイト](https://copper-pdf.com/) の「ライセンスの種類」と [標準ライセンス案内](https://copper-pdf.com/2008/07/22/buy/) を確認してください。
 
 ## ポート
 
-| ホスト側ポート | コンテナ側ポート | 説明 | 公開状態 |
-|----------------|----------------|------|----------|
-| 8497           | 8497           | HTTP/RESTインターフェース | 公開 |
-| 8499           | 8499           | CTIPプロトコル | 公開 |
-| -              | 8496           | JK (AJP) インターフェース | 非公開 |
-| -              | 8498           | 制御ポート | 非公開 |
+| ホスト側 | コンテナ側 | 用途 |
+|---:|---:|---|
+| 8497 | 8497 | HTTP / REST |
+| 8499 | 8499 | CTIP |
 
-`docker-compose.yml` では HTTP/REST 用の `8497` と CTIP 用の `8499` のみホスト側へ公開しています。
-risu にデプロイした場合は `risu.miya.be:8497` と `risu.miya.be:8499` で待ち受けます。
-
-## 設定のカスタマイズ
-
-### copperd.properties
-
-`conf/copperd.properties` でサーバーの設定を変更できます：
-
-```properties
-jp.cssj.cssjd.timeout=180          # タイムアウト(秒)
-jp.cssj.cssjd.minThreads=10        # 最小スレッド数
-jp.cssj.cssjd.maxThreads=50        # 最大スレッド数
-jp.cssj.cssjd.backlog=30           # バックログ
-jp.cssj.cssjd.port=8499            # CTIPポート
-jp.cssj.cssjd.control-port=8498    # 制御ポート
-jp.cssj.cssjd.http.port=8497       # HTTPポート
-jp.cssj.cssjd.jk.port=8496         # JKポート
-```
-
-### メモリ設定
-
-`docker-compose.yml` の `JAVA_OPTS` 環境変数でJVMメモリを設定できます：
-
-```yaml
-environment:
-  - JAVA_OPTS=-Xmx4096m  # 4GBに変更
-```
-
-## HTTP REST API の使用例
-
-サーバー起動後、HTTP経由でPDFを生成できます：
+## REST API の例
 
 ```bash
-# HTMLからPDF変換（POSTリクエスト）
 curl -X POST "http://localhost:8497/transcode" \
-     -d "rest.user=user" \
-     -d "rest.password=kappa" \
-     -d "rest.main=<html><body><h1>Hello World</h1></body></html>" \
-     -o output.pdf
-
-# ウェブサイトをPDF化
-curl -X POST "http://localhost:8497/transcode" \
-     -d "rest.user=user" \
-     -d "rest.password=kappa" \
-     -d "input.include=https://example.com/**" \
-     -d "rest.mainURI=https://example.com/" \
-     -o website.pdf
+  -d "rest.user=user" \
+  -d "rest.password=kappa" \
+  -d "rest.main=<html><body><h1>Hello World</h1></body></html>" \
+  -o output.pdf
 ```
 
-**認証情報**: デフォルトのユーザー名は `user`、パスワードは `kappa` です。
-`conf/password.txt` でパスワードを変更できます。
+デフォルトのユーザー名は `user`、パスワードは `kappa` です。変更する場合は `conf/password.txt` を用意し、次のように mount します。
+
+```yaml
+      - type: bind
+        source: ./conf/password.txt
+        target: /opt/copper-pdf/conf/password.txt
+        read_only: true
+        bind:
+          create_host_path: false
+```
 
 ## トラブルシューティング
 
-### ライセンスエラー
+### 機能が制限される
 
-`conf/license-key` ファイルが正しい場所に配置されていることを確認してください。
+ライセンスキー未設定時は機能限定版として動作します。商用ライセンスや試用ライセンスを使う場合は、`conf/license-key` を mount してください。
 
 ### ポートが使用中
 
-`docker-compose.yml` のポートマッピングを変更してください：
+ホスト側のポートだけ変更します。
 
 ```yaml
 ports:
-  - "18497:8497"  # ホスト側のHTTPポートを変更
+  - "18497:8497"
+  - "18499:8499"
 ```
 
-### フォントの問題
+## 開発・公開手順
 
-カスタムフォントを使用する場合は、`conf/profiles/fonts/` ディレクトリにフォントファイルを配置し、`fonts.xml` を編集してください。
-
-## 公開イメージ (GHCR) の利用
-
-ビルド済みイメージは GitHub Container Registry で公開しています。tarball を用意しなくても利用できます。
-
-```bash
-docker pull ghcr.io/zamasoftnet/copper-pdf:3.2.32
-# 自分のライセンスキーを実行時にマウント（イメージには焼き込まれていません）
-docker run -d -p 8497:8497 -p 8499:8499 \
-  -v "$PWD/license-key:/opt/copper-pdf/conf/license-key:ro" \
-  ghcr.io/zamasoftnet/copper-pdf:3.2.32
-```
-
-> ライセンスキー (`conf/license-key`) はイメージに含まれません。各自で取得し、上記のように実行時にマウントしてください。
-
-## イメージの publish（メンテナ向け）
-
-`.github/workflows/publish-image.yml` が GHCR へ push します。製品 tarball とフォントは
-git 管理外のため、CI では Release アセットから取得します。事前設定:
-
-- リポジトリ変数 `ASSET_REPO`（例: `zamasoftnet/copper3-proprietary`）
-- リポジトリ Secret `ASSET_TOKEN`（private Release を download する PAT・repo スコープ）
-- `ASSET_REPO` に tag `v<version>` の Release を作成し、`copper-pdf-<version>.tar.gz` と
-  `fonts.tar.gz`（`conf/profiles/fonts/` 配下の中身）を添付
-- 初回 publish 後、GHCR パッケージの可視性を **Public** に変更（ワンタイム手動）
-
-その後、Actions の「Publish container image」を `workflow_dispatch` で実行するか、
-`v3.2.32` のようなタグを push するとビルド・公開されます。
-
-## ドキュメント
-
-詳しいドキュメントは `docs/manual.pdf` を参照してください。
+イメージのビルド、Release assets の作成、GHCR への公開手順は [DEVELOPMENT.md](DEVELOPMENT.md) を参照してください。

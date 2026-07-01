@@ -3,11 +3,13 @@ name: Publish container image
 # Copper PDF の Docker イメージをビルドして GHCR に push する。
 #
 # 製品 tarball とフォントは git 管理外（巨大/成果物）のため、CI では
-# GitHub Release のアセットからダウンロードしてビルドコンテキストに配置する。
+# GitHub Release のアセットからダウンロードし、proprietary 側のビルド成果物と同じ
+# パスに配置してビルドする。
 # license-key などの秘密はイメージに焼かず、実行時にマウントする。
 #
 # 必要な事前設定:
-#   - リポジトリ変数 ASSET_REPO : tarball/fonts を置いた Release のあるリポジトリ
+#   - workflow_dispatch input asset_repo またはリポジトリ変数 ASSET_REPO:
+#       tarball/fonts を置いた Release のあるリポジトリ
 #       例) zamasoftnet/copper3-proprietary
 #   - リポジトリ Secret ASSET_TOKEN : 上記が private の場合に download するための PAT(repo スコープ)
 #   - 上記リポジトリに tag `v<version>` の Release を作り、次のアセットを添付:
@@ -21,7 +23,11 @@ on:
       version:
         description: 'Copper PDF version (image tag)'
         required: true
-        default: '3.2.32'
+        default: '3.2.33'
+      asset_repo:
+        description: 'Release asset repository (OWNER/REPO)'
+        required: false
+        default: ''
   push:
     tags:
       - 'v*'
@@ -53,14 +59,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.ASSET_TOKEN }}
           VERSION: ${{ steps.ver.outputs.version }}
-          ASSET_REPO: ${{ vars.ASSET_REPO }}
+          ASSET_REPO: ${{ inputs.asset_repo || vars.ASSET_REPO }}
         run: |
           set -euo pipefail
           if [ -z "${ASSET_REPO:-}" ]; then
-            echo "::error::repository variable ASSET_REPO is not set"; exit 1
+            echo "::error::workflow input asset_repo or repository variable ASSET_REPO is not set"; exit 1
           fi
+          mkdir -p proprietary/CopperPDF/build
           gh release download "v${VERSION}" --repo "$ASSET_REPO" \
-            --pattern "copper-pdf-${VERSION}.tar.gz" --output "copper-pdf-${VERSION}.tar.gz"
+            --pattern "copper-pdf-${VERSION}.tar.gz" --output "proprietary/CopperPDF/build/copper-pdf-${VERSION}.tar.gz"
           gh release download "v${VERSION}" --repo "$ASSET_REPO" \
             --pattern "fonts.tar.gz" --output fonts.tar.gz
           mkdir -p conf/profiles/fonts
@@ -85,6 +92,8 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          build-contexts: |
+            copper-dist=proprietary/CopperPDF/build
           push: true
           build-args: |
             COPPER_VERSION=${{ steps.ver.outputs.version }}
