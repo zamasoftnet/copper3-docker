@@ -22,7 +22,7 @@ services:
       # ログディレクトリを永続化
       - copper-logs:/opt/copper-pdf/logs
     environment:
-      - JAVA_OPTS=-Xmx2048m
+      JAVA_OPTS: "-Xmx2048m"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8497/" ]
       interval: 30s

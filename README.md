@@ -29,6 +29,8 @@ services:
     ports:
       - "8497:8497"
       - "8499:8499"
+    environment:
+      JAVA_OPTS: "-Xmx2048m"
     volumes:
       - copper-logs:/opt/copper-pdf/logs
 
@@ -104,6 +106,15 @@ ports:
   - "18499:8499"
 ```
 
+## Java メモリ設定
+
+JVM オプションは `JAVA_OPTS` で指定できます。標準では `-Xmx2048m` です。
+
+```yaml
+environment:
+  JAVA_OPTS: "-Xmx4096m"
+```
+
 ## REST API の例
 
 ```bash
@@ -122,6 +133,7 @@ Docker Compose を使わない場合の例です。
 docker run -d --name copper-pdf \
   -p 8497:8497 \
   -p 8499:8499 \
+  -e JAVA_OPTS="-Xmx2048m" \
   -v copper-logs:/opt/copper-pdf/logs \
   ghcr.io/zamasoftnet/copper-pdf:latest
 ```

@@ -32,16 +32,15 @@ VOLUME ["/opt/copper-pdf/logs"]
 
 # javaコマンドで直接起動（フォアグラウンド）
 # ドキュメントに記載のシステムプロパティを設定
-CMD ["java", \
-    "-Xmx2048m", \
-    "-Djava.net.preferIPv4Stack=true", \
-    "-Duser.home=/opt/copper-pdf", \
-    "-Djava.util.logging.config.file=/opt/copper-pdf/conf/logging.properties", \
-    "-Djp.cssj.boot.lib=/opt/copper-pdf/lib:/opt/copper-pdf/jetty/lib", \
-    "-Djp.cssj.plugin.lib=/opt/copper-pdf/plugins", \
-    "-Djp.cssj.boot.main=jp.cssj.copper.Main", \
-    "-Djp.cssj.driver.default=/opt/copper-pdf/conf/profiles/default.properties", \
-    "-Djp.cssj.copper.config=/opt/copper-pdf/conf", \
-    "-cp", "/opt/copper-pdf/lib/boot.jar", \
-    "jp.cssj.boot.Main", \
-    "-start"]
+CMD exec java ${JAVA_OPTS} \
+    -Djava.net.preferIPv4Stack=true \
+    -Duser.home=/opt/copper-pdf \
+    -Djava.util.logging.config.file=/opt/copper-pdf/conf/logging.properties \
+    -Djp.cssj.boot.lib=/opt/copper-pdf/lib:/opt/copper-pdf/jetty/lib \
+    -Djp.cssj.plugin.lib=/opt/copper-pdf/plugins \
+    -Djp.cssj.boot.main=jp.cssj.copper.Main \
+    -Djp.cssj.driver.default=/opt/copper-pdf/conf/profiles/default.properties \
+    -Djp.cssj.copper.config=/opt/copper-pdf/conf \
+    -cp /opt/copper-pdf/lib/boot.jar \
+    jp.cssj.boot.Main \
+    -start
