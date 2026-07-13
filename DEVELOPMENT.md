@@ -12,6 +12,28 @@ version.number=<version>
 
 `version.filename` が必要な箇所では、ビルド時に `version.number` の `.` を `_` に置き換えて自動生成します。
 
+## イメージタグ
+
+GHCR には次の 3 つのタグで push されます。
+
+| タグ | 例 | 性質 |
+|---|---|---|
+| `<version>-<build>` | `3.2.33-18880` | ビルドごとに一意。同一バージョンの再ビルドを区別できる |
+| `<version>` | `3.2.33` | 同バージョンの最新ビルドを指す可変タグ |
+| `latest` | `latest` | 可変タグ |
+
+`<build>` は Ant の `<buildnumber/>`（`proprietary/CopperPDF/build.number`）が製品ビルド時に埋め込む番号で、workflow が tarball 内 `lib/cssj-copper.jar` の `jp/cssj/copper/VERSION`（3 行目）から自動取得します。手元の tarball のビルド番号は WSL で次のように確認できます。
+
+```bash
+cd /mnt/f/dev/zamasoftnet-private/copper3.2/proprietary/CopperPDF/build
+tar -xzf copper-pdf-<version>.tar.gz --to-stdout copper-pdf-<version>/lib/cssj-copper.jar > /tmp/cssj-copper.jar
+unzip -p /tmp/cssj-copper.jar jp/cssj/copper/VERSION | sed -n 3p
+```
+
+本番の compose（print.cssj.jp など）から参照する場合は digest 固定、または `<version>-<build>` タグを使ってください。`<version>` と `latest` は再公開で中身が変わります。
+
+なお `proprietary/CopperPDF/build.number` ファイルの値は「次のビルドで使う番号」です（Ant がビルド時に使用した番号 + 1 を書き戻すため）。tarball に実際に入っている番号は上記の方法で tarball 自体から確認してください。
+
 ## 構成
 
 ```text

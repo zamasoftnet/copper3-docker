@@ -7,6 +7,13 @@ name: Publish container image
 # パスに配置してビルドする。
 # license-key などの秘密はイメージに焼かず、実行時にマウントする。
 #
+# イメージタグ:
+#   - <version>-<build>  例) 3.2.33-18880  同一バージョンの再ビルドを区別する固定タグ
+#   - <version>          例) 3.2.33        最新ビルドを指す可変タグ
+#   - latest                               可変タグ
+# <build> は tarball 内 lib/cssj-copper.jar の jp/cssj/copper/VERSION（3行目）から
+# 取得する。Ant の <buildnumber/> が製品ビルド時に埋め込む値そのもの。
+#
 # 必要な事前設定:
 #   - workflow_dispatch input asset_repo またはリポジトリ変数 ASSET_REPO:
 #       tarball/fonts を置いた Release のあるリポジトリ
@@ -74,6 +81,21 @@ jobs:
           tar -xzf fonts.tar.gz -C conf/profiles/fonts
           rm -f fonts.tar.gz
 
+      - name: Resolve build number from product tarball
+        id: build
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          set -euo pipefail
+          tar -xzf "proprietary/CopperPDF/build/copper-pdf-${VERSION}.tar.gz" \
+            --to-stdout "copper-pdf-${VERSION}/lib/cssj-copper.jar" > /tmp/cssj-copper.jar
+          BUILD=$(unzip -p /tmp/cssj-copper.jar jp/cssj/copper/VERSION | sed -n '3p' | tr -d '[:space:]')
+          case "$BUILD" in
+            ''|*[!0-9]*) echo "::error::could not resolve build number from product tarball (got: '${BUILD}')"; exit 1 ;;
+          esac
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+          echo "Build number: $BUILD"
+
       - name: Safety check (no secrets in build context)
         run: |
           set -e
@@ -98,8 +120,10 @@ jobs:
           build-args: |
             COPPER_VERSION=${{ steps.ver.outputs.version }}
           tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.ver.outputs.version }}-${{ steps.build.outputs.build }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.ver.outputs.version }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.version=${{ steps.ver.outputs.version }}
+            org.opencontainers.image.version=${{ steps.ver.outputs.version }}-${{ steps.build.outputs.build }}
+            jp.cssj.copper.build=${{ steps.build.outputs.build }}
