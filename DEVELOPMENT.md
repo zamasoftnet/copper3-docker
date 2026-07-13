@@ -105,6 +105,14 @@ docker compose exec copper-pdf /opt/copper-pdf/copperd -status
 docker compose down
 ```
 
+## サーバー配備
+
+Copper PDF はホストごとに共有の単体コンテナとして独立起動・独立管理します（アプリのComposeスタックには含めません）。配備には `docker-compose.deploy.yml` を使います。手順はファイル冒頭のコメントを参照してください。
+
+- テストサーバー risu.miya.be: `~/services/copper-pdf/`。copper_site とブログ出版局テストサイトが共有
+- 本番サーバー print.cssj.jp: 同構成。ファイヤーウォールで 8497/8499 をグローバルに公開しない
+- アプリからの接続は `host.docker.internal:8499`（compose の `extra_hosts: host.docker.internal:host-gateway` 経由）
+
 ## 秘密情報の扱い
 
 `conf/license-key`、`conf/password.txt`、`deploy.json` は `.gitignore` と `.dockerignore` の対象です。ローカルに置いても git や Docker ビルドコンテキストには入りません。

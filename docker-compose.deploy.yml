@@ -1,0 +1,43 @@
+# サーバー配備用 Compose。ローカルビルドではなく r.miya.be のイメージを使う。
+#
+# 使い方:
+#   1. このファイルを サーバーの ~/services/copper-pdf/docker-compose.yml として配置
+#   2. 同ディレクトリに conf/ 一式を配置
+#      (license-key, password.txt, copperd.properties, access.txt, profiles/fonts など)
+#   3. docker login r.miya.be してから docker compose up -d
+#
+# 運用モデル: Copper PDF はホストごとに共有の単体コンテナとして独立起動・独立管理する。
+# ブログ出版局(print.cssj.jp)や copper_site 等のアプリスタックには含めない。
+# アプリからは host.docker.internal:8499 (CTIP) で接続する。
+# ホストの 0.0.0.0 に公開するため、本番サーバーではファイヤーウォールで
+# 8497/8499 をグローバルに公開しない設定にすること(LAN/Docker bridgeのみ許可)。
+#
+# イメージ更新時は下記 digest を差し替えて docker compose up -d。
+# タグ <version>-<build> (例 3.2.33-18880) とdigestの対応はレジストリで確認する。
+services:
+  copper-pdf:
+    # Copper PDF 3.2.33 build 18880 (WebP対応)
+    image: r.miya.be/copper-pdf@sha256:da50593903f1f0dbc7e1f01a501562051808fe192c87fcbc549acda5fc9e3f21
+    container_name: copper-pdf
+    restart: unless-stopped
+    ports:
+      # HTTPポート (copperd.propertiesで設定: jp.cssj.cssjd.http.port)
+      - "8497:8497"
+      # Mainポート (CTIP)
+      - "8499:8499"
+    volumes:
+      # ログディレクトリを永続化
+      - copper-logs:/opt/copper-pdf/logs
+      # ホスト側の設定一式(license-key/password.txt/profiles/fonts含む)をイメージのconfに被せる
+      - ./conf:/opt/copper-pdf/conf:ro
+    environment:
+      - JAVA_OPTS=-Xmx2048m
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8497/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  copper-logs:
