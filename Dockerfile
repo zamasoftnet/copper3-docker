@@ -1,5 +1,7 @@
 # syntax=docker/dockerfile:1.4
-FROM eclipse-temurin:11-jre
+# 2026-09-21: Jetty 12 のサーバーは Java 17 以上が要るので 11-jre から 21-jre へ。
+# 同梱 JRE(extras/*/runtime)も 21.0.12.1+1 に揃えた
+FROM eclipse-temurin:21-jre
 
 # curlをインストール（ヘルスチェック用）
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
