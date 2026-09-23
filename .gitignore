@@ -3,11 +3,13 @@ conf/license-key
 conf/password.txt
 deploy.json
 docker-compose.override.yml
+.env
+user/
 
 # ビルド済み製品アーカイブ（イメージに焼く成果物。gitには入れない）
 *.tar.gz
 
-# 大容量フォント資産（OFLで再配布可だが git 不向き。イメージ同梱/取得で対応）
+# ローカルのフォント資産（配布用はNotoだけ、内部用はフルpackをnamed contextで使用）
 conf/profiles/fonts/
 
 # ログ・一時

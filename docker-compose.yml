@@ -3,8 +3,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: distribution
       additional_contexts:
         copper-dist: ../proprietary/CopperPDF/build
+        noto-sans: ./conf/profiles/fonts/truetype/Noto_Sans_JP
+        noto-serif: ./conf/profiles/fonts/truetype/Noto_Serif_JP
       args:
         COPPER_VERSION: ${COPPER_VERSION:-3.2.33}
     container_name: copper-pdf

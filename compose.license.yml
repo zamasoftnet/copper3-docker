@@ -1,0 +1,9 @@
+services:
+  copper-pdf:
+    secrets:
+      - source: copper-license
+        target: /opt/copper-pdf/conf/license-key
+
+secrets:
+  copper-license:
+    file: ./user/license-key

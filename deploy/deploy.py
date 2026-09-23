@@ -9,6 +9,10 @@ import sys
 import tempfile
 
 DEFAULT_COPPER_VERSION = "3.2.33"
+FONT_EXTENSIONS = (
+    '.otf', '.otc', '.ttf', '.ttc', '.pfb', '.pfa', '.woff', '.woff2',
+    '.eot', '.dfont', '.fon',
+)
 
 def load_config(base_dir):
     # deploy.py is in 'deploy/' subdirectory, so configuration is up one level
@@ -24,6 +28,12 @@ def resolve_local_path(base_dir, path):
     if os.path.isabs(path):
         return path
     return os.path.abspath(os.path.join(base_dir, path))
+
+def contains_font_binary(font_dir):
+    for root, _, files in os.walk(font_dir):
+        if any(name.lower().endswith(FONT_EXTENSIONS) for name in files):
+            return True
+    return False
 
 def main():
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -63,6 +73,15 @@ def main():
         print("Build it first with: cd ../proprietary/CopperPDF && ./build.sh dist1 archive")
         sys.exit(1)
 
+    # deploy.shはrisu等の社内サーバーへフォント込みinternal imageを配備する
+    # 専用経路。フォントが無いまま公開用targetへ暗黙に落ちることを許さない。
+    conf_dir = os.path.join(base_dir, "conf")
+    font_dir = os.path.join(conf_dir, "profiles", "fonts")
+    if not os.path.isdir(font_dir) or not contains_font_binary(font_dir):
+        print(f"Error: internal font payload not found under {font_dir}")
+        print("Use docker-compose.yml directly when building the Noto-only distribution image.")
+        sys.exit(1)
+
     # Use a temporary directory for the key to ensure cleanup
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_key = os.path.join(temp_dir, "id_ed25519")
@@ -89,16 +108,20 @@ def main():
 
             # 2. Transfer files
             print("[2/3] Transferring configuration and build files...")
-            files_to_transfer = ["docker-compose.yml", "Dockerfile", ".dockerignore"]
-            for file in files_to_transfer:
-                if os.path.exists(os.path.join(base_dir, file)):
-                    run_command(scp_base + [os.path.join(base_dir, file), f"{target}:{remote_docker}/"])
+            files_to_transfer = {
+                "docker-compose.internal.yml": "docker-compose.yml",
+                "Dockerfile": "Dockerfile",
+                ".dockerignore": ".dockerignore",
+            }
+            for local_name, remote_name in files_to_transfer.items():
+                local_path = os.path.join(base_dir, local_name)
+                if os.path.exists(local_path):
+                    run_command(scp_base + [local_path, f"{target}:{remote_docker}/{remote_name}"])
                 else:
-                    print(f"Warning: {file} not found locally, skipping.")
+                    print(f"Warning: {local_name} not found locally, skipping.")
             run_command(scp_base + [artifact_path, f"{target}:{remote_build}/"])
 
             # Transfer conf directory
-            conf_dir = os.path.join(base_dir, "conf")
             if os.path.isdir(conf_dir):
                 print("Transferring conf directory...")
                 run_command(scp_base + ["-r", conf_dir, f"{target}:{remote_docker}/"])

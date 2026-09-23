@@ -2,9 +2,9 @@ name: Publish container image
 
 # Copper PDF の Docker イメージをビルドして GHCR に push する。
 #
-# 製品 tarball とフォントは git 管理外（巨大/成果物）のため、CI では
-# GitHub Release のアセットからダウンロードし、proprietary 側のビルド成果物と同じ
-# パスに配置してビルドする。
+# 公開配布用イメージには固定allow-listのNoto Sans/Serif JPだけを含める。
+# CIはReleaseから製品tarballとNoto専用assetを取得し、Dockerfileの
+# distribution targetがベース由来フォントや他書体の混入を拒否する。
 # license-key などの秘密はイメージに焼かず、実行時にマウントする。
 #
 # イメージタグ:
@@ -16,11 +16,11 @@ name: Publish container image
 #
 # 必要な事前設定:
 #   - workflow_dispatch input asset_repo またはリポジトリ変数 ASSET_REPO:
-#       tarball/fonts を置いた Release のあるリポジトリ
+#       製品tarballとNoto専用assetを置いたReleaseのあるリポジトリ
 #       例) zamasoftnet/copper3-proprietary
 #   - リポジトリ Secret ASSET_TOKEN : 上記が private の場合に download するための PAT(repo スコープ)
-#   - 上記リポジトリに tag `v<version>` の Release を作り、次のアセットを添付:
-#       copper-pdf-<version>.tar.gz, fonts.tar.gz  (fonts.tar.gz は profiles/fonts 配下の中身)
+#   - 上記リポジトリに tag `v<version>` のReleaseを作り、次のアセットを添付:
+#       copper-pdf-<version>.tar.gz, noto-fonts.tar.gz
 #   - 初回 publish 後、GHCR パッケージの可視性を Public に変更（ワンタイム手動）
 #       Org の Packages → copper-pdf → Package settings → Change visibility → Public
 
@@ -62,7 +62,7 @@ jobs:
             echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Download product tarball and fonts from release
+      - name: Download product tarball and public Noto fonts from release
         env:
           GH_TOKEN: ${{ secrets.ASSET_TOKEN }}
           VERSION: ${{ steps.ver.outputs.version }}
@@ -76,10 +76,10 @@ jobs:
           gh release download "v${VERSION}" --repo "$ASSET_REPO" \
             --pattern "copper-pdf-${VERSION}.tar.gz" --output "proprietary/CopperPDF/build/copper-pdf-${VERSION}.tar.gz"
           gh release download "v${VERSION}" --repo "$ASSET_REPO" \
-            --pattern "fonts.tar.gz" --output fonts.tar.gz
-          mkdir -p conf/profiles/fonts
-          tar -xzf fonts.tar.gz -C conf/profiles/fonts
-          rm -f fonts.tar.gz
+            --pattern "noto-fonts.tar.gz" --output noto-fonts.tar.gz
+          mkdir -p public-fonts
+          tar -xzf noto-fonts.tar.gz -C public-fonts
+          rm noto-fonts.tar.gz
 
       - name: Resolve build number from product tarball
         id: build
@@ -97,11 +97,31 @@ jobs:
           echo "Build number: $BUILD"
 
       - name: Safety check (no secrets in build context)
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
         run: |
-          set -e
+          set -euo pipefail
           for f in conf/license-key conf/password.txt deploy.json; do
             if [ -f "$f" ]; then echo "::error::$f must not be in the image"; exit 1; fi
           done
+          if find conf -type f \( -iname '*.otf' -o -iname '*.otc' -o -iname '*.ttf' -o -iname '*.ttc' \
+               -o -iname '*.pfb' -o -iname '*.pfa' -o -iname '*.woff' -o -iname '*.woff2' \
+               -o -iname '*.eot' -o -iname '*.dfont' -o -iname '*.fon' \) \
+               -print -quit | grep -q .; then
+            echo "::error::public build context contains a font binary"; exit 1
+          fi
+          grep -Ev '^[[:space:]]*(#|$)' distribution-noto-fonts.txt | sort -u > /tmp/expected-fonts
+          find public-fonts -type f \( -iname '*.otf' -o -iname '*.otc' -o -iname '*.ttf' -o -iname '*.ttc' \
+               -o -iname '*.pfb' -o -iname '*.pfa' -o -iname '*.woff' -o -iname '*.woff2' \
+               -o -iname '*.eot' -o -iname '*.dfont' -o -iname '*.fon' \) \
+               -printf '%f\n' | sort -u > /tmp/actual-fonts
+          if ! diff -u /tmp/expected-fonts /tmp/actual-fonts; then
+            echo "::error::public font asset is not the fixed Noto allow-list"; exit 1
+          fi
+          if tar -tzf "proprietary/CopperPDF/build/copper-pdf-${VERSION}.tar.gz" \
+               | grep -Eiq '\.(otf|otc|ttf|ttc|pfb|pfa|woff|woff2|eot|dfont|fon)$'; then
+            echo "::error::product tarball contains a font binary"; exit 1
+          fi
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -114,8 +134,11 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          target: distribution
           build-contexts: |
             copper-dist=proprietary/CopperPDF/build
+            noto-sans=public-fonts/Noto_Sans_JP
+            noto-serif=public-fonts/Noto_Serif_JP
           push: true
           build-args: |
             COPPER_VERSION=${{ steps.ver.outputs.version }}

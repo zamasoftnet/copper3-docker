@@ -1,6 +1,15 @@
 # Copper PDF Docker 開発メモ
 
-この文書は Docker イメージのビルド、Release assets の作成、GHCR への公開を行うメンテナ向けです。Docker イメージの利用手順は [README.md](README.md) を参照してください。
+この文書は Docker イメージのビルド、Release assets の作成、GHCR への公開、社内サーバーへの配備を行うメンテナ向けです。Docker イメージの利用手順は [README.md](README.md) を参照してください。
+
+## イメージ区分
+
+| 区分 | Docker target / Compose | フォント | 用途 |
+|---|---|---|---|
+| 配布用 | `distribution` / `docker-compose.yml` | 固定allow-listのNoto Sans/Serif JPのみ | GHCRで一般公開 |
+| 内部用 | `internal` / `docker-compose.internal.yml` | `conf/profiles/fonts` の既存一式 | risuなど社内サーバー |
+
+Dockerfile の最終targetは `distribution` です。共通ランタイムは製品側にフォントバイナリがあれば失敗し、ベースJRE由来のシステムフォントを削除します。配布用targetは `noto-sans` / `noto-serif` contextからNotoだけを追加し、全体を固定allow-listと照合します。内部用フォントは通常のbuild contextから除外され、`internal` targetへだけ `copper-fonts` named contextとして渡されます。
 
 ## バージョン
 
@@ -41,6 +50,8 @@ copper3.2/
 ├── docker/
 │   ├── Dockerfile
 │   ├── docker-compose.yml
+│   ├── docker-compose.internal.yml
+│   ├── docker-compose.deploy.yml
 │   ├── .github/workflows/publish-image.yml
 │   └── DEVELOPMENT.md
 └── proprietary/
@@ -49,7 +60,8 @@ copper3.2/
     └── CopperPDF/
         └── build/
             ├── copper-pdf-<version>.tar.gz
-            └── fonts.tar.gz
+            ├── noto-fonts.tar.gz  # 公開Docker用の固定Noto asset
+            └── fonts.tar.gz  # --internal-fonts指定時だけ作成する内部用asset
 ```
 
 Docker は BuildKit の named context `copper-dist` で `../proprietary/CopperPDF/build` を参照します。製品 tarball を `docker/` 配下へコピーする必要はありません。
@@ -59,7 +71,7 @@ Docker は BuildKit の named context `copper-dist` で `../proprietary/CopperPD
 PowerShell で `proprietary` ディレクトリへ移動し、WSL で実行します。
 
 ```powershell
-cd F:\dev\zamasoftnet-private\copper3.2\proprietary
+cd F:\dev\CopperPDF\copper3.2\proprietary
 wsl ./publish-docker-assets.sh
 ```
 
@@ -67,7 +79,12 @@ wsl ./publish-docker-assets.sh
 
 ```text
 proprietary/CopperPDF/build/copper-pdf-<version>.tar.gz
-proprietary/CopperPDF/build/fonts.tar.gz
+```
+
+通常の実行では公開用の製品アーカイブと `noto-fonts.tar.gz` を作成します。内部用フルフォントアーカイブも明示的に作る場合だけ、次を使います。
+
+```powershell
+wsl ./publish-docker-assets.sh --internal-fonts
 ```
 
 WSL に JDK が無い場合は先に入れます。
@@ -78,18 +95,17 @@ sudo apt install openjdk-11-jdk
 
 ## ローカルイメージビルド
 
-`docker/conf/profiles/fonts` が無い環境では、先にフォントを展開します。
+配布用イメージは `conf/profiles/fonts/truetype` からNotoの2ディレクトリだけをnamed context経由で取り込みます。
 
 ```powershell
-cd F:\dev\zamasoftnet-private\copper3.2\docker
-New-Item -ItemType Directory -Force conf\profiles\fonts
-tar -xzf ..\proprietary\CopperPDF\build\fonts.tar.gz -C conf\profiles\fonts
+cd F:\dev\CopperPDF\copper3.2\docker
+docker compose up -d --build
 ```
 
-イメージをビルドして起動します。
+内部用イメージは、既存の `conf/profiles/fonts` をnamed contextとして明示的に取り込みます。
 
 ```powershell
-docker compose up -d --build
+docker compose -f docker-compose.internal.yml up -d --build
 ```
 
 ログと状態確認:
@@ -105,9 +121,13 @@ docker compose exec copper-pdf /opt/copper-pdf/copperd -status
 docker compose down
 ```
 
-## サーバー配備
+## 内部サーバー配備
 
-Copper PDF はホストごとに共有の単体コンテナとして独立起動・独立管理します（アプリのComposeスタックには含めません）。配備には `docker-compose.deploy.yml` を使います。手順はファイル冒頭のコメントを参照してください。
+Copper PDF はホストごとに共有の単体コンテナとして独立起動・独立管理します（アプリのComposeスタックには含めません）。この経路はフォント込みの内部用です。
+
+- `deploy.sh` は `docker-compose.internal.yml` とローカルの `conf/profiles/fonts` を転送し、サーバーで内部用targetをビルドします。フォントバイナリが無い場合は配備前に停止します。
+- `docker-compose.deploy.yml` は、内部レジストリに事前配置したフォント込みイメージをdigest固定で利用する場合の構成です。
+- `docker-compose.internal.yml` は `conf/license-key` をruntime secretとしてコンテナの所定位置へマウントします。キーはイメージlayerには保存しません。
 
 - テストサーバー risu.miya.be: `~/services/copper-pdf/`。copper_site とブログ出版局テストサイトが共有
 - 本番サーバー print.cssj.jp: 同構成。ファイヤーウォールで 8497/8499 をグローバルに公開しない
@@ -117,14 +137,14 @@ Copper PDF はホストごとに共有の単体コンテナとして独立起動
 
 `conf/license-key`、`conf/password.txt`、`deploy.json` は `.gitignore` と `.dockerignore` の対象です。ローカルに置いても git や Docker ビルドコンテキストには入りません。
 
-ライセンスキーやパスワードはイメージに焼き込まず、実行時に bind mount します。ローカルの `docker-compose.override.yml` も git 管理外です。
+ライセンスキーやパスワードはイメージに焼き込まず、内部用ではruntime secret、配布用では必要に応じて読み取り専用mountで渡します。ローカルの `docker-compose.override.yml` もgit管理外です。
 
 ## GHCR への公開
 
 通常は `proprietary` 側のスクリプトから、Release assets の作成と Docker workflow の起動まで行います。
 
 ```powershell
-cd F:\dev\zamasoftnet-private\copper3.2\proprietary
+cd F:\dev\CopperPDF\copper3.2\proprietary
 wsl ./publish-docker-assets.sh --publish --clobber
 ```
 
@@ -149,9 +169,10 @@ Windows 側の `gh.exe` でログイン済みの場合、スクリプトは WSL 
 
 1. `version.properties` から `version.number` を読み取る
 2. `CopperPDF/build/copper-pdf-<version>.tar.gz` をビルドする
-3. `CopperPDF/build/fonts.tar.gz` を作成する
-4. `v<version>` の Release asset としてアップロードする
-5. `docker/.github/workflows/publish-image.yml` を起動し、GHCR へ push する
+3. 製品tarballとNoto専用tarballを `v<version>` のRelease assetとしてアップロードする
+4. `docker/.github/workflows/publish-image.yml` を起動し、Notoだけを含む配布用イメージをGHCRへpushする
+
+`--internal-fonts` を付けた場合だけ `fonts.tar.gz` も作成・アップロードします。このassetは内部運用専用で、公開Docker workflowは取得しません。
 
 事前に Docker リポジトリ側で以下を設定します。
 
@@ -170,7 +191,7 @@ wsl ./publish-docker-assets.sh --publish --clobber `
 
 ## GitHub Actions
 
-`docker/.github/workflows/publish-image.yml` が GHCR へ push します。CI では Release assets から `copper-pdf-<version>.tar.gz` と `fonts.tar.gz` を取得し、`proprietary/CopperPDF/build/` と `conf/profiles/fonts/` に配置してから Docker build を実行します。
+`docker/.github/workflows/publish-image.yml` がGHCRへpushします。CIはRelease assetsから `copper-pdf-<version>.tar.gz` と `noto-fonts.tar.gz` を取得し、`distribution` targetをビルドします。製品tarballへのフォント混入、Noto assetのallow-list逸脱、完成イメージへのNoto以外の混入があれば公開前に失敗します。
 
 手動実行する場合は Actions の `Publish container image` を `workflow_dispatch` で起動し、`version` と `asset_repo` を指定します。
 

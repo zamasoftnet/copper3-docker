@@ -1,0 +1,14 @@
+# Public distribution allow-list. Keep in sync with the Noto release asset.
+NotoSansJP-Black.otf
+NotoSansJP-Bold.otf
+NotoSansJP-Light.otf
+NotoSansJP-Medium.otf
+NotoSansJP-Regular.otf
+NotoSansJP-Thin.otf
+NotoSerifJP-Black.otf
+NotoSerifJP-Bold.otf
+NotoSerifJP-ExtraLight.otf
+NotoSerifJP-Light.otf
+NotoSerifJP-Medium.otf
+NotoSerifJP-Regular.otf
+NotoSerifJP-SemiBold.otf

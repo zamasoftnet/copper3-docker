@@ -12,6 +12,11 @@ deploy.sh
 conf/license-key
 conf/password.txt
 deploy.json
+user/
+
+# 通常のbuild contextへフォントを入れない。配布用はNotoの2ディレクトリ、
+# 内部用はフルpackを、それぞれ明示したnamed contextからだけ取り込む。
+conf/profiles/fonts/
 
 # ログ・一時
 *.log

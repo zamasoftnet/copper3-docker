@@ -1,0 +1,26 @@
+name: copper-pdf-3
+
+services:
+  copper-pdf:
+    image: ${COPPER_IMAGE:-ghcr.io/zamasoftnet/copper-pdf:latest}
+    restart: unless-stopped
+    environment:
+      JAVA_OPTS: "-Xmx${COPPER_MEMORY_MB:-2048}m"
+    ports:
+      - "${COPPER_HTTP_PORT:-8497}:8497"
+      - "${COPPER_MAIN_PORT:-8499}:8499"
+    volumes:
+      - copper-logs:/opt/copper-pdf/logs
+      - type: bind
+        source: ./user/fonts
+        target: /opt/copper-pdf/conf/profiles/fonts/truetype/user
+        read_only: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8497/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  copper-logs:
