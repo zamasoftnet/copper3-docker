@@ -106,6 +106,11 @@ RUN sed -i -f /tmp/distribution-font-dirs.sed /opt/copper-pdf/conf/profiles/font
     && grep -Fq 'dir="truetype/Noto_Sans_JP"' /opt/copper-pdf/conf/profiles/fonts/fonts.xml \
     && grep -Fq 'dir="truetype/Noto_Serif_JP"' /opt/copper-pdf/conf/profiles/fonts/fonts.xml \
     && grep -Fq 'dir="truetype/user"' /opt/copper-pdf/conf/profiles/fonts/fonts.xml \
+    && grep -Fq '<serif font-family="Times-Roman,Noto Serif JP,' /opt/copper-pdf/conf/profiles/fonts/fonts.xml \
+    && grep -Fq '<sans-serif font-family="Helvetica,Noto Sans JP,' /opt/copper-pdf/conf/profiles/fonts/fonts.xml \
+    && printf '\n# Docker distribution: embed the bundled Noto fonts, fall back to CID-keyed fonts.\noutput.pdf.fonts.policy=embedded cid-keyed\n' \
+       >> /opt/copper-pdf/conf/profiles/default.properties \
+    && grep -Fxq 'output.pdf.fonts.policy=embedded cid-keyed' /opt/copper-pdf/conf/profiles/default.properties \
     && grep -Ev '^[[:space:]]*(#|$)' /tmp/distribution-noto-fonts.txt | sort -u > /tmp/expected-fonts \
     && find / -xdev -type f \
       \( -iname '*.otf' -o -iname '*.otc' -o -iname '*.ttf' -o -iname '*.ttc' -o \

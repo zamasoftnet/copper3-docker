@@ -76,7 +76,9 @@ user/
 
 ## 追加フォント
 
-公開イメージにはNoto Sans JP／Noto Serif JPが最初から入っています。別のフォントを使う場合は、利用条件を確認した`.otf`、`.ttf`、`.ttc`などを`user/fonts`へ置いてコンテナを再起動します。
+公開イメージにはNoto Sans JP／Noto Serif JPが最初から入っています。ライセンスキーを配置すると、`serif`・`sans-serif`（と明示した`Noto Serif JP`・`Noto Sans JP`）の和文はNotoで組まれ、PDFへ埋め込まれます。欧文は従来どおりTimes・Helvetica、Notoに無い文字はPDF閲覧環境の標準フォントを参照します。ライセンスキーが無い機能限定版ではフォントを埋め込めないため、Notoは使われず、和文は閲覧環境の標準の明朝・ゴシックを参照するPDFになります。
+
+別のフォントを使う場合は、利用条件を確認した`.otf`、`.ttf`、`.ttc`などを`user/fonts`へ置いてコンテナを再起動します。
 
 ```text
 user/

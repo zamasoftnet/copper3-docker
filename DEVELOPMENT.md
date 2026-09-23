@@ -97,6 +97,11 @@ sudo apt install openjdk-11-jdk
 
 配布用イメージは `conf/profiles/fonts/truetype` からNotoの2ディレクトリだけをnamed context経由で取り込みます。
 
+Notoを実際に使わせるため、`distribution-font-dirs.sed` が `fonts.xml` の総称書体(serif・sans-serif・fantasy・cursive)の
+Mincho・Gothicの手前にNotoを入れ、Dockerfileが `default.properties` に `output.pdf.fonts.policy=embedded cid-keyed` を足します。
+Notoは埋め込み型として登録されるので、この方針が無いと明示しても選ばれません。機能限定版は方針を変えられない
+(`build.xml` の `LIMITED_PROPERTIES`)ため、従来どおりMincho・Gothic(埋め込まない)になります。monospaceは変えていません。
+
 ```powershell
 cd F:\dev\CopperPDF\copper3.2\docker
 docker compose up -d --build
