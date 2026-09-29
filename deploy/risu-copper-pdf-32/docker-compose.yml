@@ -1,0 +1,33 @@
+# risu.miya.be の ~/services/copper-pdf-32/docker-compose.yml の写し(2026-09-29 に実物から収録。build 18896 の時点)。
+# 入れ替えは image 行の digest を差し替えて `docker compose up -d`(旧版は docker-compose.pre-<build>-<日時>.yml に退避)。
+# 手順は copper3.2/docs/release-3.2.33-procedure.md の risu の節。
+#
+# Copper PDF 3.2.33 (build 18896、公開予定と同じ distribution イメージ) をブログ出版局テストサイト用に並走させる。
+# risu の共有 copper-pdf(Copper 4、8497/8499)は copper_site と cti.li MCP が使うので触らない。
+# 置き場所: ~/services/copper-pdf-32/docker-compose.yml
+# 設定は共有コンテナと同じ ~/services/copper-pdf/conf を読み取り専用で使う
+# (3.2 の構成一式 license-key / copperd.properties / profiles が残っている)。
+# 元の定義: ~/services/copper-pdf/docker-compose.copper3-backup-20260814-123948.yml
+services:
+  copper-pdf-32:
+    image: r.miya.be/copper-pdf@sha256:25cc3ec48e2007213717cc6e36cd72fc747171fc7aa2d501af43ab60de0863da
+    container_name: copper-pdf-32
+    restart: unless-stopped
+    ports:
+      # 共有の Copper 4 と重ならないホスト側ポートにする
+      - "8597:8497"   # HTTP
+      - "8599:8499"   # CTIP(ブログ出版局の COPPER_PORT)
+    volumes:
+      - copper32-logs:/opt/copper-pdf/logs
+      - ../copper-pdf/conf:/opt/copper-pdf/conf:ro
+    environment:
+      - JAVA_OPTS=-Xmx2048m
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8497/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  copper32-logs:

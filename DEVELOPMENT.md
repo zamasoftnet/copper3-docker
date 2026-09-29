@@ -134,7 +134,10 @@ Copper PDF はホストごとに共有の単体コンテナとして独立起動
 - `docker-compose.deploy.yml` は、内部レジストリに事前配置したフォント込みイメージをdigest固定で利用する場合の構成です。
 - `docker-compose.internal.yml` は `conf/license-key` をruntime secretとしてコンテナの所定位置へマウントします。キーはイメージlayerには保存しません。
 
-- テストサーバー risu.miya.be: `~/services/copper-pdf/`。copper_site とブログ出版局テストサイトが共有
+- テストサーバー risu.miya.be: 共有の `~/services/copper-pdf/` は **Copper 4**(copper_site と cti.li MCP)。
+  ブログ出版局テストサイトは 3.2 を別コンテナ `~/services/copper-pdf-32/`(`copper-pdf-32`、ホスト側 8597/**8599**)で
+  並走させている(2026-09-17 から)。conf は `../copper-pdf/conf` を読み取り専用で共用する。
+  定義の写しは `deploy/risu-copper-pdf-32/docker-compose.yml`
 - 本番サーバー print.cssj.jp: 同構成。ファイヤーウォールで 8497/8499 をグローバルに公開しない
 - アプリからの接続は `host.docker.internal:8499`（compose の `extra_hosts: host.docker.internal:host-gateway` 経由）
 
