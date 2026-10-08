@@ -8,7 +8,7 @@ Copper PDF の Docker イメージを利用するための手順です。
 ghcr.io/zamasoftnet/copper-pdf:<tag>
 ```
 
-検証では `latest` を使えます。運用では、意図しない更新を避けるため公開済みの固定タグを指定してください。
+3.2 系は `3.2.33` などの公開済みの固定タグを指定してください。`latest` は Copper PDF 4 の公開後は 4 を指します。
 
 公開イメージは配布用であり、固定allow-listの Noto Sans JP / Noto Serif JP を同梱します。IPA、M+、ベースイメージ由来のDejaVuなど、それ以外のフォントは含みません。追加の埋め込みフォントが必要な場合は、利用者がライセンスを確認したフォントを実行時にマウントしてください。社内サーバー向けのフルフォントイメージは別系統で管理し、GHCRには公開しません。
 
@@ -152,7 +152,7 @@ docker run -d --name copper-pdf \
   -p 8499:8499 \
   -e JAVA_OPTS="-Xmx2048m" \
   -v copper-logs:/opt/copper-pdf/logs \
-  ghcr.io/zamasoftnet/copper-pdf:latest
+  ghcr.io/zamasoftnet/copper-pdf:3.2.33
 ```
 
 ライセンスキーを使う場合は次のオプションを追加します。
