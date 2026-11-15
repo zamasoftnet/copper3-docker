@@ -1,18 +1,26 @@
-# risu.miya.be の ~/services/copper-pdf-32/docker-compose.yml の写し(2026-09-29 に実物から収録。build 18896 の時点)。
-# 入れ替えは image 行の digest を差し替えて `docker compose up -d`(旧版は docker-compose.pre-<build>-<日時>.yml に退避)。
-# 手順は copper3.2/docs/release-3.2.33-procedure.md の risu の節。
+# risu.miya.be の ~/services/copper-pdf-32/docker-compose.yml の写し(2026-09-29 に実物から収録。build 18896 の時点。
+# 2026-11-15 に送信遮断(egress guard)を入れた)。
+# 入れ替えは guard-build/Dockerfile の FROM の digest を差し替えて `docker compose build && docker compose up -d`
+# (旧版は docker-compose.pre-<build>-<日時>.yml に退避)。手順は copper3.2/docs/release-3.2.33-procedure.md の risu の節。
 #
 # Copper PDF 3.2.33 (build 18896、公開予定と同じ distribution イメージ) をブログ出版局テストサイト用に並走させる。
 # risu の共有 copper-pdf(Copper 4、8497/8499)は copper_site と cti.li MCP が使うので触らない。
 # 置き場所: ~/services/copper-pdf-32/docker-compose.yml
 # 設定は共有コンテナと同じ ~/services/copper-pdf/conf を読み取り専用で使う
-# (3.2 の構成一式 license-key / copperd.properties / profiles が残っている)。
 # 元の定義: ~/services/copper-pdf/docker-compose.copper3-backup-20260814-123948.yml
 services:
   copper-pdf-32:
-    image: r.miya.be/copper-pdf@sha256:25cc3ec48e2007213717cc6e36cd72fc747171fc7aa2d501af43ab60de0863da
+    # The 3.2 image with the egress guard of Copper 4 (guard-build/Dockerfile; egress-guard.sh is a copy of
+    # copperpdf4/docker/egress-guard.sh). Every start of the container puts the iptables rules into its own network
+    # namespace, checks them, and runs the server with no capability; if the rules cannot be put in, the server does
+    # not start. The print site pushes its resources over CTIP, so the server needs nothing from the inner network.
+    build: guard-build
+    image: copper-pdf-32-guarded:3.2.33-18896
     container_name: copper-pdf-32
     restart: unless-stopped
+    user: root
+    cap_add:
+      - NET_ADMIN
     ports:
       # 共有の Copper 4 と重ならないホスト側ポートにする
       - "8597:8497"   # HTTP
@@ -22,6 +30,8 @@ services:
       - ../copper-pdf/conf:/opt/copper-pdf/conf:ro
     environment:
       - JAVA_OPTS=-Xmx2048m
+      # 自己検証で「届かないこと」を確かめる内側の宛先(Copper 4 と同じ。8310 はテストサイトの nginx)
+      - COPPER_EGRESS_PROBES=http://192.168.10.1/ http://192.168.10.15:8310/ http://172.17.0.1:8310/
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8497/" ]
       interval: 30s
