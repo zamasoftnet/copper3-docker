@@ -8,7 +8,7 @@ import subprocess
 import sys
 import tempfile
 
-DEFAULT_COPPER_VERSION = "3.2.33"
+DEFAULT_COPPER_VERSION = "3.2.34"
 FONT_EXTENSIONS = (
     '.otf', '.otc', '.ttf', '.ttc', '.pfb', '.pfa', '.woff', '.woff2',
     '.eot', '.dfont', '.fon',

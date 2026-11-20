@@ -9,7 +9,7 @@ services:
         noto-sans: ./conf/profiles/fonts/truetype/Noto_Sans_JP
         noto-serif: ./conf/profiles/fonts/truetype/Noto_Serif_JP
       args:
-        COPPER_VERSION: ${COPPER_VERSION:-3.2.33}
+        COPPER_VERSION: ${COPPER_VERSION:-3.2.34}
     container_name: copper-pdf
     restart: unless-stopped
     ports:

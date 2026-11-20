@@ -2,7 +2,7 @@ name: copper-pdf-3
 
 services:
   copper-pdf:
-    image: ${COPPER_IMAGE:-ghcr.io/zamasoftnet/copper-pdf:3.2.33}
+    image: ${COPPER_IMAGE:-ghcr.io/zamasoftnet/copper-pdf:3.2.34}
     restart: unless-stopped
     environment:
       JAVA_OPTS: "-Xmx${COPPER_MEMORY_MB:-2048}m"

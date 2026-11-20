@@ -6,11 +6,24 @@ FROM eclipse-temurin:21-jre AS runtime
 # curlをインストール（ヘルスチェック用）
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
+# 2026-11-20(3.2.34): Java を CVE-2026-114938(Java4Shell)を直した Temurin 21.0.13.1+2 に差し替える。
+# 公式の eclipse-temurin:21-jre はまだ 21.0.13+9(直る前)なので、Adoptium の配布物を SHA-256 で照合して
+# /opt/java/openjdk に入れ替える。公式の像が 21.0.13.1 以降になったら、この段を消して FROM だけに戻す
+ARG TEMURIN_JRE_URL=https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13.1%2B2/OpenJDK21U-jre_x64_linux_hotspot_21.0.13.1_2.tar.gz
+ARG TEMURIN_JRE_SHA256=18f44fab9065217f3ba61d0eef8a7b5f3c3713aa7293001b0d4ac10ede3850f0
+ENV JAVA_VERSION=jdk-21.0.13.1+2
+RUN curl -fsSL -o /tmp/jre.tar.gz "${TEMURIN_JRE_URL}" \
+    && echo "${TEMURIN_JRE_SHA256}  /tmp/jre.tar.gz" | sha256sum -c - \
+    && rm -rf /opt/java/openjdk && mkdir -p /opt/java/openjdk \
+    && tar -xzf /tmp/jre.tar.gz -C /opt/java/openjdk --strip-components=1 \
+    && rm /tmp/jre.tar.gz \
+    && java -version 2>&1 | grep -q '"21.0.13.1"'
+
 # 作業ディレクトリを設定
 WORKDIR /opt/copper-pdf
 
 # Copper PDFアーカイブを proprietary 側のビルド成果物からコピーして展開
-ARG COPPER_VERSION=3.2.33
+ARG COPPER_VERSION=3.2.34
 COPY --from=copper-dist copper-pdf-${COPPER_VERSION}.tar.gz /tmp/copper-pdf.tar.gz
 RUN tar -xzf /tmp/copper-pdf.tar.gz -C /opt/copper-pdf --strip-components=1 \
     && rm /tmp/copper-pdf.tar.gz \

@@ -2,7 +2,7 @@
 # 公開配布にはNotoだけを含むdocker-compose.ymlを使うこと。
 services:
   copper-pdf:
-    image: copper-pdf-internal:${COPPER_VERSION:-3.2.33}
+    image: copper-pdf-internal:${COPPER_VERSION:-3.2.34}
     build:
       context: .
       dockerfile: Dockerfile
@@ -11,7 +11,7 @@ services:
         copper-dist: ../proprietary/CopperPDF/build
         copper-fonts: ./conf/profiles/fonts
       args:
-        COPPER_VERSION: ${COPPER_VERSION:-3.2.33}
+        COPPER_VERSION: ${COPPER_VERSION:-3.2.34}
     container_name: copper-pdf
     restart: unless-stopped
     ports:

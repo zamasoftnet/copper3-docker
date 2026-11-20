@@ -30,7 +30,7 @@ on:
       version:
         description: 'Copper PDF version (image tag)'
         required: true
-        default: '3.2.33'
+        default: '3.2.34'
       asset_repo:
         description: 'Release asset repository (OWNER/REPO)'
         required: false
