@@ -1,4 +1,4 @@
-# Copper PDF 3.2.33 (build 18896) for the print site's test server on risu, with the egress guard (2026-11-15).
+# Copper PDF 3.2.34 (build 18898, Java fixed for CVE-2026-114938) for the print site's test server on risu, with the egress guard (2026-11-15).
 #
 # The same guard as Copper 4 (copperpdf4/docker/egress-guard.sh, copied next to this file when deploying): at every
 # start of the container, as root with NET_ADMIN, it puts iptables rules into the container's own network namespace so
@@ -12,7 +12,7 @@
 #
 # The base image's ENTRYPOINT and CMD are kept: the guard runs the base entrypoint with the base command. Setting
 # ENTRYPOINT clears the inherited CMD, so the CMD below is the base image's, taken by `docker image inspect`.
-FROM r.miya.be/copper-pdf@sha256:25cc3ec48e2007213717cc6e36cd72fc747171fc7aa2d501af43ab60de0863da
+FROM r.miya.be/copper-pdf@sha256:ca4980cb97eebe454bce12c3f16660130520c26279256f93fcd6b48fa7d9dcb6
 USER root
 RUN apt-get update \
     && apt-get install -y --no-install-recommends iptables \

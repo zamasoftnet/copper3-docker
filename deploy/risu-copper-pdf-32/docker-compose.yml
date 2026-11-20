@@ -3,7 +3,7 @@
 # 入れ替えは guard-build/Dockerfile の FROM の digest を差し替えて `docker compose build && docker compose up -d`
 # (旧版は docker-compose.pre-<build>-<日時>.yml に退避)。手順は copper3.2/docs/release-3.2.33-procedure.md の risu の節。
 #
-# Copper PDF 3.2.33 (build 18896、公開予定と同じ distribution イメージ) をブログ出版局テストサイト用に並走させる。
+# Copper PDF 3.2.34 (build 18898、公開した distribution イメージ。同梱の Java は CVE-2026-114938 の直った 21.0.13.1) をブログ出版局テストサイト用に並走させる。
 # risu の共有 copper-pdf(Copper 4、8497/8499)は copper_site と cti.li MCP が使うので触らない。
 # 置き場所: ~/services/copper-pdf-32/docker-compose.yml
 # 設定は共有コンテナと同じ ~/services/copper-pdf/conf を読み取り専用で使う
@@ -15,7 +15,7 @@ services:
     # namespace, checks them, and runs the server with no capability; if the rules cannot be put in, the server does
     # not start. The print site pushes its resources over CTIP, so the server needs nothing from the inner network.
     build: guard-build
-    image: copper-pdf-32-guarded:3.2.33-18896
+    image: copper-pdf-32-guarded:3.2.34-18898
     container_name: copper-pdf-32
     restart: unless-stopped
     user: root
